@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API = "http://localhost:8081";
+const API = "http://100.48.83.254:8081";
 const USER_ID =
   localStorage.getItem("ecommerceUserId") ||
   `user-${crypto.randomUUID()}`;
