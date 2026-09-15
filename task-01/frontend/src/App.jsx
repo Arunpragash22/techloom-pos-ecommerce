@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API = "http://100.48.83.254:8080";
+const API = "/api";
 
 function App() {
   const [products, setProducts] = useState([]);
