@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API = "/api";
+const API = "http://3.80.42.113:8080";
 
 function App() {
   const [products, setProducts] = useState([]);
@@ -14,19 +14,77 @@ function App() {
   const [currentOrder, setCurrentOrder] = useState(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
+  // New Product
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    description: "",
+    price: "",
+    stockQuantity: "",
+  });
+
+  const [productMessage, setProductMessage] = useState("");
+
   useEffect(() => {
     loadProducts();
     loadCart();
   }, []);
+
+  // =========================
+  // PRODUCTS
+  // =========================
 
   const loadProducts = async () => {
     try {
       const response = await axios.get(`${API}/api/products`);
       setProducts(response.data);
     } catch (error) {
+      console.error(error);
       setMessage("Unable to connect to POS backend.");
     }
   };
+
+  // =========================
+  // ADD PRODUCT
+  // =========================
+
+  const addProduct = async (e) => {
+    e.preventDefault();
+    setProductMessage("");
+
+    try {
+      const response = await axios.post(`${API}/api/products`, {
+        name: newProduct.name,
+        description: newProduct.description,
+        price: Number(newProduct.price),
+        stockQuantity: Number(newProduct.stockQuantity),
+        active: true,
+      });
+
+      setProductMessage(
+        `Product "${response.data.name}" added successfully.`
+      );
+
+      setNewProduct({
+        name: "",
+        description: "",
+        price: "",
+        stockQuantity: "",
+      });
+
+      await loadProducts();
+    } catch (error) {
+      console.error(error);
+
+      setProductMessage(
+        error.response?.data?.message ||
+          "Failed to add product."
+      );
+    }
+  };
+
+  // =========================
+  // CART
+  // =========================
 
   const loadCart = async () => {
     try {
@@ -36,6 +94,7 @@ function App() {
 
       setCart(response.data.items || []);
     } catch (error) {
+      console.error(error);
       setMessage("Unable to load cart.");
     }
   };
@@ -79,6 +138,10 @@ function App() {
     }
   };
 
+  // =========================
+  // CHECKOUT
+  // =========================
+
   const checkout = async () => {
     if (cart.length === 0) {
       setMessage("Cart is empty.");
@@ -116,13 +179,17 @@ function App() {
     }
   };
 
+  // =========================
+  // PAYMENT
+  // =========================
+
   const processPayment = async (success) => {
     if (!currentOrder) return;
 
     setPaymentLoading(true);
 
     try {
-      const response = await axios.post(
+      await axios.post(
         `${API}/api/payments/${currentOrder.id}`,
         null,
         {
@@ -143,7 +210,6 @@ function App() {
       }
 
       await loadOrder(currentOrder.id);
-
       loadProducts();
     } catch (error) {
       setMessage(
@@ -154,6 +220,10 @@ function App() {
       setPaymentLoading(false);
     }
   };
+
+  // =========================
+  // ORDER
+  // =========================
 
   const loadOrder = async (orderId) => {
     try {
@@ -166,6 +236,10 @@ function App() {
       setMessage("Unable to load order.");
     }
   };
+
+  // =========================
+  // CANCEL + REFUND
+  // =========================
 
   const cancelOrder = async () => {
     if (!currentOrder) return;
@@ -189,6 +263,10 @@ function App() {
       );
     }
   };
+
+  // =========================
+  // TOTAL
+  // =========================
 
   const total = cart.reduce(
     (sum, item) =>
@@ -220,7 +298,93 @@ function App() {
 
       <main className="container">
 
-        {/* PRODUCTS */}
+        {/* =========================
+            ADD PRODUCT
+        ========================= */}
+
+        <section className="add-product-section">
+
+          <div className="section-title">
+            <h2>Add New Product</h2>
+          </div>
+
+          <form
+            onSubmit={addProduct}
+            className="product-form"
+          >
+
+            <input
+              type="text"
+              placeholder="Product Name"
+              value={newProduct.name}
+              onChange={(e) =>
+                setNewProduct({
+                  ...newProduct,
+                  name: e.target.value,
+                })
+              }
+              required
+            />
+
+            <input
+              type="text"
+              placeholder="Description"
+              value={newProduct.description}
+              onChange={(e) =>
+                setNewProduct({
+                  ...newProduct,
+                  description: e.target.value,
+                })
+              }
+            />
+
+            <input
+              type="number"
+              placeholder="Price"
+              min="0"
+              step="0.01"
+              value={newProduct.price}
+              onChange={(e) =>
+                setNewProduct({
+                  ...newProduct,
+                  price: e.target.value,
+                })
+              }
+              required
+            />
+
+            <input
+              type="number"
+              placeholder="Stock Quantity"
+              min="0"
+              value={newProduct.stockQuantity}
+              onChange={(e) =>
+                setNewProduct({
+                  ...newProduct,
+                  stockQuantity: e.target.value,
+                })
+              }
+              required
+            />
+
+            <button type="submit">
+              Add Product
+            </button>
+
+          </form>
+
+          {productMessage && (
+            <p className="product-message">
+              {productMessage}
+            </p>
+          )}
+
+        </section>
+
+        {/* =========================
+            PRODUCTS
+        ========================= */}
+
         <section className="products-section">
 
           <div className="section-title">
@@ -290,10 +454,14 @@ function App() {
 
         </section>
 
-        {/* RIGHT SIDE */}
+        {/* =========================
+            RIGHT SIDE
+        ========================= */}
+
         <aside>
 
           {/* CART */}
+
           <div className="cart-section">
 
             <div className="cart-header">
@@ -307,6 +475,7 @@ function App() {
             {cart.length === 0 ? (
 
               <div className="empty-cart">
+
                 <div>🛒</div>
 
                 <p>
@@ -316,11 +485,13 @@ function App() {
                 <small>
                   Add products to start an order.
                 </small>
+
               </div>
 
             ) : (
 
               <>
+
                 <div className="cart-items">
 
                   {cart.map((item) => (
@@ -330,6 +501,7 @@ function App() {
                     >
 
                       <div>
+
                         <strong>
                           {item.product.name}
                         </strong>
@@ -337,6 +509,7 @@ function App() {
                         <p>
                           Qty: {item.quantity}
                         </p>
+
                       </div>
 
                       <div className="cart-item-right">
@@ -366,12 +539,14 @@ function App() {
                 </div>
 
                 <div className="cart-total">
+
                   <span>Total</span>
 
                   <strong>
                     Rs.{" "}
                     {total.toLocaleString()}
                   </strong>
+
                 </div>
 
                 <button
@@ -390,21 +565,27 @@ function App() {
           </div>
 
           {/* ORDER / PAYMENT */}
+
           {currentOrder && (
+
             <div className="order-section">
 
               <div className="order-header">
+
                 <h2>
                   Order #{currentOrder.id}
                 </h2>
 
                 <span
-                  className={`order-status ${currentOrder.status
-                    ?.toLowerCase()
-                    .replace("_", "-")}`}
+                  className={`order-status ${
+                    currentOrder.status
+                      ?.toLowerCase()
+                      .replace("_", "-")
+                  }`}
                 >
                   {currentOrder.status}
                 </span>
+
               </div>
 
               <div className="order-details">
@@ -422,12 +603,15 @@ function App() {
 
                 <p>
                   <span>Customer</span>
+
                   <strong>
                     {currentOrder.userId}
                   </strong>
                 </p>
 
               </div>
+
+              {/* PAYMENT PENDING */}
 
               {currentOrder.status ===
                 "PENDING_PAYMENT" && (
@@ -461,6 +645,8 @@ function App() {
                 </div>
               )}
 
+              {/* CONFIRMED */}
+
               {currentOrder.status ===
                 "CONFIRMED" && (
 
@@ -472,6 +658,8 @@ function App() {
                 </button>
               )}
 
+              {/* PAYMENT FAILED */}
+
               {currentOrder.status ===
                 "PAYMENT_FAILED" && (
 
@@ -481,6 +669,8 @@ function App() {
                 </div>
               )}
 
+              {/* EXPIRED */}
+
               {currentOrder.status ===
                 "EXPIRED" && (
 
@@ -489,6 +679,8 @@ function App() {
                   Reserved stock has been released.
                 </div>
               )}
+
+              {/* CANCELLED */}
 
               {currentOrder.status ===
                 "CANCELLED" && (
